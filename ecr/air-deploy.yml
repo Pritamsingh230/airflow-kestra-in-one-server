@@ -1,0 +1,136 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  labels:
+    app: airflow-scheduler
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: airflow-scheduler
+  template:
+    metadata:
+      labels:
+        app: airflow-scheduler
+    spec:
+      initContainers:
+        - name: airflow-db-init
+          image: 339712944453.dkr.ecr.us-east-2.amazonaws.com/airflow:airflow-2.10.5
+          command: ["airflow", "db", "init"]
+          env:
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              value: postgresql+psycopg2://airflow:airflow@postgres-service:5432/airflow_db
+          volumeMounts:
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+      containers:
+        - name: airflow-scheduler
+          image: 339712944453.dkr.ecr.us-east-2.amazonaws.com/airflow:airflow-2.10.5
+          command: ["airflow", "scheduler"]
+          env:
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              value: postgresql+psycopg2://airflow:airflow@postgres-service:5432/airflow_db
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: CeleryExecutor
+            - name: AIRFLOW__CELERY__BROKER_URL
+              value: redis://redis-service:6379/0
+            - name: AIRFLOW__CELERY__RESULT_BACKEND
+              value: db+postgresql://airflow:airflow@postgres-service:5432/airflow_db
+          volumeMounts:
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+      volumes:
+        - name: airflow-logs
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  labels:
+    app: airflow-webserver
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: airflow-webserver
+  template:
+    metadata:
+      labels:
+        app: airflow-webserver
+    spec:
+      containers:
+        - name: airflow-webserver
+          image: 339712944453.dkr.ecr.us-east-2.amazonaws.com/airflow:airflow-2.10.5
+          command: ["airflow", "webserver"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              value: postgresql+psycopg2://airflow:airflow@postgres-service:5432/airflow_db
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: CeleryExecutor
+            - name: AIRFLOW__CELERY__BROKER_URL
+              value: redis://redis-service:6379/0
+            - name: AIRFLOW__CELERY__RESULT_BACKEND
+              value: db+postgresql://airflow:airflow@postgres-service:5432/airflow_db
+          volumeMounts:
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+      volumes:
+        - name: airflow-logs
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-worker
+  labels:
+    app: airflow-worker
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: airflow-worker
+  template:
+    metadata:
+      labels:
+        app: airflow-worker
+    spec:
+      containers:
+        - name: airflow-worker
+          image: 339712944453.dkr.ecr.us-east-2.amazonaws.com/airflow:airflow-2.10.5
+          command: ["airflow", "celery", "worker"]  # Updated to use "celery worker"
+          env:
+            - name: AIRFLOW__CORE__SQL_ALCHEMY_CONN
+              value: postgresql+psycopg2://airflow:airflow@postgres-service:5432/airflow_db
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: CeleryExecutor
+            - name: AIRFLOW__CELERY__BROKER_URL
+              value: redis://redis-service:6379/0
+            - name: AIRFLOW__CELERY__RESULT_BACKEND
+              value: db+postgresql://airflow:airflow@postgres-service:5432/airflow_db
+          volumeMounts:
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+      volumes:
+        - name: airflow-logs
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-webserver-service
+spec:
+  selector:
+    app: airflow-webserver
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: LoadBalancer
