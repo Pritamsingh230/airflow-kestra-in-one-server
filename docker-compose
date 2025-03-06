@@ -1,0 +1,129 @@
+# # Use an appropriate Airflow base image
+# FROM apache/airflow:latest
+
+# # Set the working directory
+# WORKDIR /opt/oracle
+
+# # Copy the Oracle Instant Client from your host to the container
+# COPY instantclient_23_7 /opt/oracle/instantclient_23_7
+
+# # Set up environment variables for Oracle Instant Client
+# ENV LD_LIBRARY_PATH="/opt/oracle/instantclient_23_7:$LD_LIBRARY_PATH"
+# ENV PATH="/opt/oracle/instantclient_23_7:$PATH"
+
+# # Install dependencies (if required)
+# RUN apt-get update && apt-get install -y libaio1 unzip
+
+# # Ensure permissions
+# RUN chmod -R 755 /opt/oracle/instantclient_23_7
+
+# Use the base Apache Airflow image
+# Use the base Apache Airflow image
+# Use the base Apache Airflow image
+FROM apache/airflow:2.10.5
+
+ENV ORACLE_HOME=/opt/oracle
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+
+# Run as root to install dependencies
+USER root
+RUN apt-get update && apt-get install -y \
+    unzip \
+    libaio1 \
+    gcc \
+    g++ \
+    make \
+    build-essential \
+&& rm -rf /var/lib/apt/lists/*
+
+# Ensure that the /usr/local directory has the right permissions
+RUN chmod -R 755 /usr/local
+
+RUN mkdir -p $ORACLE_HOME && chown -R airflow: $ORACLE_HOME
+
+# Create the tmp directory with proper permissions
+RUN mkdir -p /tmp && chown -R airflow: /tmp
+
+# Switch back to a non-root user (e.g., "airflow")
+USER airflow
+
+# Install Python packages required for Oracle client and Airflow Oracle provider
+RUN pip install cx_Oracle oracledb apache-airflow-providers-oracle pandas sqlalchemy
+
+# Check if the Oracle Instant Client file exists in the build context and copy it
+RUN if [ -f /tmp/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip ]; then \
+        echo "Oracle Instant Client zip file found"; \
+        cp /tmp/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip $ORACLE_HOME/; \
+    else \
+        echo "Oracle Instant Client zip file not found, skipping copy step"; \
+    fi
+
+# Unzip the Oracle Instant Client if the file is present
+RUN if [ -f $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip ]; then \
+        unzip -j $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip -d $ORACLE_HOME; \
+    else \
+        echo "Oracle Instant Client zip file not found, skipping unzip step"; \
+    fi
+
+# Delete the zip file if it was copied
+RUN if [ -f $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip ]; then \
+        rm -rf $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip; \
+    fi
+
+# Set environment variables for Oracle Instant Client
+ENV PATH=$PATH:$ORACLE_HOME
+ENV ORACLE_VERSION=19.22
+# Use the base Apache Airflow image
+FROM apache/airflow:2.10.5
+
+ENV ORACLE_HOME=/opt/oracle
+ENV LD_LIBRARY_PATH=$ORACLE_HOME
+
+# Run as root to install dependencies
+USER root
+RUN apt-get update && apt-get install -y \
+    unzip \
+    libaio1 \
+    gcc \
+    g++ \
+    make \
+    build-essential \
+&& rm -rf /var/lib/apt/lists/*
+
+# Ensure that the /usr/local directory has the right permissions
+RUN chmod -R 755 /usr/local
+
+RUN mkdir -p $ORACLE_HOME && chown -R airflow: $ORACLE_HOME
+
+# Create the tmp directory with proper permissions
+RUN mkdir -p /tmp && chown -R airflow: /tmp
+
+# Switch back to a non-root user (e.g., "airflow")
+USER airflow
+
+# Install Python packages required for Oracle client and Airflow Oracle provider
+RUN pip install cx_Oracle oracledb apache-airflow-providers-oracle pandas sqlalchemy
+
+# Check if the Oracle Instant Client file exists in the build context and copy it
+RUN if [ -f /tmp/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip ]; then \
+        echo "Oracle Instant Client zip file found"; \
+        cp /tmp/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip $ORACLE_HOME/; \
+    else \
+        echo "Oracle Instant Client zip file not found, skipping copy step"; \
+    fi
+
+# Unzip the Oracle Instant Client if the file is present
+RUN if [ -f $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip ]; then \
+        unzip -j $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip -d $ORACLE_HOME; \
+    else \
+        echo "Oracle Instant Client zip file not found, skipping unzip step"; \
+    fi
+
+# Delete the zip file if it was copied
+RUN if [ -f $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip ]; then \
+        rm -rf $ORACLE_HOME/instantclient-basic-linux.x64-19.22.0.0.0dbru.zip; \
+    fi
+
+# Set environment variables for Oracle Instant Client
+ENV PATH=$PATH:$ORACLE_HOME
+ENV ORACLE_VERSION=19.22
