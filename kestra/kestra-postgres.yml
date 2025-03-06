@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-kestra-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/postgres-kestra"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-kestra-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-kestra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-kestra
+  template:
+    metadata:
+      labels:
+        app: postgres-kestra
+    spec:
+      nodeSelector:
+        role: kestra-node  # Ensure it runs on a specific node for Kestra
+      containers:
+        - name: postgres
+          image: postgres:latest
+          env:
+            - name: POSTGRES_DB
+              value: "kestra"
+            - name: POSTGRES_USER
+              value: "kestra"
+            - name: POSTGRES_PASSWORD
+              value: "k3str4"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-storage
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-kestra-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-kestra
+spec:
+  selector:
+    app: postgres-kestra
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
