@@ -1,0 +1,3 @@
+airflow-scheduler,
+airflow-webserver,
+airflow-worker
